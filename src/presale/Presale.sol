@@ -78,6 +78,38 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
+     * @dev Current Stage Max Amount
+     * Returns the maximum amount of tokens that can be sold in the current stage.
+     */
+    function currentStageMaxAmount() public pure returns (uint128) {
+        return STAGE_MAX_TOKENS;
+    }
+    
+    /**
+     * @dev Current Stage Available Amount
+     * Returns the amount of tokens that can still be sold in the current stage.
+     */
+    function currentStageAvailableAmount() public view returns (uint128) {
+        uint128 current = currentStage();
+        if (current == 0) {
+            return 0;
+        }
+        return STAGE_MAX_TOKENS - _stageSales[current];
+    }
+
+    /**
+     * @dev Current Stage Sold Amount
+     * Returns the amount of tokens that have been sold in the current stage to a given address.
+     */
+    function currentStageSoldAmount(address to) public view returns (uint128) {
+        uint128 current = currentStage();
+        if (current == 0) {
+            return 0;
+        }
+        return _stageBalances[to][current];
+    }
+
+    /**
      * @dev Triggers stopped state.
      *
      * Requirements:
@@ -112,24 +144,24 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Token sale
      */
-    function tokenSale(uint256 _qty) external payable whenNotPaused checkStage nonReentrant {
+    function tokenSale(uint256 qty) external payable whenNotPaused checkStage nonReentrant {
         uint128 current = currentStage();
 
         require(current > 0, "presale not open yet");
-        require(_qty > 0, "zero qty");
-        require(_stageSales[current] + _qty <= STAGE_MAX_TOKENS, "max stage qty");
-        require(_stageBalances[_msgSender()][current] + _qty <= STAGE_MAX_WALLET_BUY, "max stage wallet qty");
+        require(qty > 0, "zero qty");
+        require(_stageSales[current] + qty <= STAGE_MAX_TOKENS, "max stage qty");
+        require(_stageBalances[_msgSender()][current] + qty <= STAGE_MAX_WALLET_BUY, "max stage wallet qty");
 
         // calculate MATIC amount to pay
-        uint256 amount = (UNIT_PRICE + (STAGE_PRICE_INCREMENT * (current - 1))) * _qty;
+        uint256 amount = (UNIT_PRICE + (STAGE_PRICE_INCREMENT * (current - 1))) * qty;
         require(amount == msg.value, "invalid sent amount");
 
         // update state
-        _stageSales[current] += uint128(_qty);
-        _stageBalances[_msgSender()][current] += uint128(_qty);
+        _stageSales[current] += uint128(qty);
+        _stageBalances[_msgSender()][current] += uint128(qty);
 
         // send tokens
-        TestToken(saleToken).mint(_msgSender(), _qty);
-        emit Sale(_msgSender(), current, _qty, amount);
+        TestToken(saleToken).mint(_msgSender(), qty);
+        emit Sale(_msgSender(), current, qty, amount);
     }
 }
