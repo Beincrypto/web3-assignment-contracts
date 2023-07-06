@@ -39,7 +39,7 @@ contract Token is ERC20, Ownable, Mintable {
         address to,
         uint256 amount
     ) internal override {
-        require(authorized[_msgSender()], "transfer not allowed");
+        require(from == address(0) || to == address(0) || authorized[_msgSender()], "transfer not allowed");
 
         super._update(from, to, amount);
     }

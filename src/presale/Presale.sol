@@ -16,8 +16,8 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
     mapping(uint128 => uint128) private _stageSales;
 
     uint64 public constant STAGE_BLOCKS_DURATION = 43200;
-    uint64 public constant STAGE_PRICE_INCREMENT = 10000000000000;
-    uint128 public constant UNIT_PRICE = 100000000000000;
+    uint64 public constant STAGE_PRICE_INCREMENT = 0.00001 ether;
+    uint128 public constant UNIT_PRICE =  0.0001 ether;
     uint128 public constant STAGE_MAX_TOKENS = 1000000000000000000000000;
     uint128 public constant STAGE_MAX_WALLET_BUY = 10000000000000000000000;
 
@@ -81,7 +81,10 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
      * @dev Current Stage Max Amount
      * Returns the maximum amount of tokens that can be sold in the current stage.
      */
-    function currentStageMaxAmount() public pure returns (uint128) {
+    function currentStageMaxAmount() public view returns (uint128) {
+        if (currentStage() == 0) {
+            return 0;
+        }
         return STAGE_MAX_TOKENS;
     }
     
@@ -107,6 +110,18 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
             return 0;
         }
         return _stageBalances[to][current];
+    }
+
+    /**
+     * @dev Current Stage Price
+     * Returns the price of each token unit in the current stage.
+     */
+    function currentStagePrice() public view returns (uint256) {
+        uint128 current = currentStage();
+        if (current == 0) {
+            return 0;
+        }
+        return UNIT_PRICE + (STAGE_PRICE_INCREMENT * (current - 1));
     }
 
     /**
@@ -144,7 +159,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Token sale
      */
-    function tokenSale(uint256 qty) external payable whenNotPaused checkStage nonReentrant {
+    function tokenSale(uint256 qty) external payable whenNotPaused checkStage nonReentrant returns (bool) {
         uint128 current = currentStage();
 
         require(current > 0, "presale not open yet");
@@ -152,8 +167,8 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         require(_stageSales[current] + qty <= STAGE_MAX_TOKENS, "max stage qty");
         require(_stageBalances[_msgSender()][current] + qty <= STAGE_MAX_WALLET_BUY, "max stage wallet qty");
 
-        // calculate MATIC amount to pay
-        uint256 amount = (UNIT_PRICE + (STAGE_PRICE_INCREMENT * (current - 1))) * qty;
+        // calculate ETH amount to pay
+        uint256 amount = (UNIT_PRICE + (STAGE_PRICE_INCREMENT * (current - 1))) * qty / 1e18;
         require(amount == msg.value, "invalid sent amount");
 
         // update state
@@ -163,5 +178,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         // send tokens
         TestToken(saleToken).mint(_msgSender(), qty);
         emit Sale(_msgSender(), current, qty, amount);
+
+        return true;
     }
 }
