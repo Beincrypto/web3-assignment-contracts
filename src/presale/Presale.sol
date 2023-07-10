@@ -21,7 +21,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
     uint128 public constant STAGE_MAX_TOKENS = 1000000000000000000000000;
     uint128 public constant STAGE_MAX_WALLET_BUY = 10000000000000000000000;
 
-    uint128 public saleStage = 0;
+    uint128 private saleStage = 0;
     uint128 public blockStart = 0;
 
     address public saleToken;
@@ -77,6 +77,17 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         return uint128(blocksPassed / STAGE_BLOCKS_DURATION + 1);
     }
 
+    /**
+     * @dev Current Stage Block Start
+     * Returns the block number at which the current stage started.
+     */
+    function currentStageBlockStart() public view returns (uint128) {
+        if (currentStage() == 0) {
+            return 0;
+        }
+        return blockStart + (uint128(currentStage() - 1) * STAGE_BLOCKS_DURATION);
+    }
+    
     /**
      * @dev Current Stage Max Amount
      * Returns the maximum amount of tokens that can be sold in the current stage.
@@ -142,6 +153,14 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
      */
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    /**
+     * @dev Withdraw ETH
+     * Withdraws ETH from the contract.
+     */
+    function withdraw() external onlyOwner {
+        payable(_msgSender()).transfer(address(this).balance);
     }
 
     /**
